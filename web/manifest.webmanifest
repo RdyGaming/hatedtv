@@ -1,7 +1,7 @@
 {
   "name": "Hated TV",
   "short_name": "Hated TV",
-  "description": "Free US live TV with a guide, from the Hated TV server at home.",
+  "description": "Free US live TV with a guide, by Hated Gaming.",
   "start_url": "index.html#home",
   "scope": "./",
   "display": "standalone",

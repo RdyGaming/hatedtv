@@ -3,7 +3,7 @@
 static(handler, path)  serves web/ under /app/, plus the intro video, fonts and logo from the Roku app folder (with byte ranges)
 relay(handler, qs)     /p?u=<url>[&ua=][&ref=]: fetches a public stream for browsers that cannot load it directly,
                        rewriting playlist links so every follow-up request comes back through the relay."""
-import ipaddress, mimetypes, re, socket, urllib.parse, urllib.request
+import http.client, ipaddress, mimetypes, re, socket, ssl, urllib.parse, urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -44,13 +44,16 @@ def static(h, rel):
     h.end_headers(); h.wfile.write(part)
 
 
-SHARED = ipaddress.ip_network("100.64.0.0/10")   # carrier-grade NAT, also every Tailscale address
+NAT64 = ipaddress.ip_network("64:ff9b::/96")
 
 
 def blocked_ip(ip):
-    if getattr(ip, "ipv4_mapped", None): ip = ip.ipv4_mapped
-    return (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast
-            or ip.is_unspecified or (ip.version == 4 and ip in SHARED))
+    """Anything that is not a plain public internet address is blocked, including IPv6 forms that embed IPv4."""
+    if ip.version == 6:
+        if ip in NAT64: return True
+        inner = ip.ipv4_mapped or ip.sixtofour or (ip.teredo[1] if ip.teredo else None)
+        if inner is not None: return blocked_ip(inner)
+    return not ip.is_global or ip.is_multicast
 
 
 def public_host(url):
@@ -65,6 +68,39 @@ def public_host(url):
     return bool(ips) and not any(blocked_ip(ip) for ip in ips)
 
 
+def check_peer(sock):
+    """Called right after the TCP connection opens, before TLS or any request bytes: the address actually
+    reached must be public, so a name that changes between lookups cannot point the relay at the home network."""
+    try:
+        peer = ipaddress.ip_address(sock.getpeername()[0])
+    except Exception:
+        peer = None
+    if peer is None or blocked_ip(peer):
+        sock.close()
+        raise PermissionError("relay target is not a public address")
+
+
+class SafeHTTPConnection(http.client.HTTPConnection):
+    def connect(self):
+        super().connect()
+        check_peer(self.sock)
+
+
+class SafeHTTPSConnection(http.client.HTTPSConnection):
+    def connect(self):
+        http.client.HTTPConnection.connect(self)
+        check_peer(self.sock)
+        self.sock = self._context.wrap_socket(self.sock, server_hostname=self.host)
+
+
+class SafeHTTPHandler(urllib.request.HTTPHandler):
+    def http_open(self, req): return self.do_open(SafeHTTPConnection, req)
+
+
+class SafeHTTPSHandler(urllib.request.HTTPSHandler):
+    def https_open(self, req): return self.do_open(SafeHTTPSConnection, req, context=ssl.create_default_context())
+
+
 class CheckedRedirect(urllib.request.HTTPRedirectHandler):
     """Follows a redirect only when its target passes public_host too."""
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -73,18 +109,11 @@ class CheckedRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def open_public(url, hdr, timeout):
-    """Opens url after checking it, refusing redirects to private addresses. The connection itself
-    re-checks the address it actually connected to, so a name that changes between lookups is refused."""
-    opener = urllib.request.build_opener(CheckedRedirect)
-    r = opener.open(urllib.request.Request(url, headers=hdr), timeout=timeout)
-    try:
-        sock = r.fp.raw._sock if hasattr(r.fp, "raw") else None
-        peer = sock.getpeername()[0] if sock else None
-    except Exception:
-        peer = None
-    if peer and blocked_ip(ipaddress.ip_address(peer)):
-        r.close(); raise PermissionError("relay target resolved to a private address")
-    return r
+    opener = urllib.request.build_opener(SafeHTTPHandler, SafeHTTPSHandler, CheckedRedirect)
+    return opener.open(urllib.request.Request(url, headers=hdr), timeout=timeout)
+
+
+MEDIA = re.compile(r"^(video/|audio/|application/(vnd\.apple\.mpegurl|x-mpegurl|octet-stream|mp4|dash\+xml)|image/)", re.I)
 
 
 def relay_link(url, ua, ref):
@@ -123,7 +152,9 @@ def relay(h, qs):
         h.send_response(200); h.send_header("Content-Type", "application/vnd.apple.mpegurl")
         h.send_header("Content-Length", str(len(body))); h.end_headers()
         h.wfile.write(body); return
-    h.send_response(200); h.send_header("Content-Type", ctype or "application/octet-stream")
+    safe = ctype if MEDIA.match(ctype or "") else "application/octet-stream"
+    h.send_response(200); h.send_header("Content-Type", safe)
+    h.send_header("X-Content-Type-Options", "nosniff"); h.send_header("Content-Security-Policy", "sandbox")
     length = r.headers.get("Content-Length")
     if length: h.send_header("Content-Length", length)
     h.end_headers()

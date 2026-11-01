@@ -28,9 +28,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tabs a { text-decoration: none; padding: 6px 10px; font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--grey); border: 1px solid transparent; }
 .tabs a.on { color: var(--red); border-color: var(--red); }
 .tools { margin-left: auto; display: flex; align-items: center; gap: 14px; }
-.chip { background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; font-size: 13px; }
+.chip { background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; font-size: 13px; white-space: nowrap; }
 .chip:hover { border-color: var(--red); }
-.clock { color: var(--grey); font-size: 14px; }
+.clock { color: var(--grey); font-size: 14px; ; white-space: nowrap; }
 
 /* player */
 .player { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 0 var(--gut); }

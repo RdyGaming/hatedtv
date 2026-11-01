@@ -2,7 +2,7 @@
   "use strict";
   const $ = (s) => document.querySelector(s);
   const main = $("#main");
-  const BASE = location.pathname.replace(/\/app\/.*$/, "").replace(/\/$/, "");   // "" when served at the root, "/hatedtv" when served under that path
+  const BASE = location.pathname.replace(/\/app(\/.*)?$/, "").replace(/\/$/, "");   // "" when served at the root, "/hatedtv" when served under that path
   const api = (p) => BASE + p;
   const IPTV_API = "https://iptv-org.github.io/api/categories.json";
   const LANGS = [["", "All languages"], ["eng", "English"], ["spa", "Spanish"]];

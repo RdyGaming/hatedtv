@@ -332,12 +332,24 @@
 
   /* ---------- shell ---------- */
   let tt;
-  function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => (el.hidden = true), 1800); }
+  function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(tt); tt = setTimeout(() => (el.hidden = true), t.length > 40 ? 4000 : 1800); }
   function paintLang() { $("#lang").textContent = "Language: " + LANGS.find((l) => l[0] === st.lang)[1]; }
   $("#lang").onclick = async () => {
     const i = LANGS.findIndex((l) => l[0] === st.lang);
     st.lang = LANGS[(i + 1) % LANGS.length][0]; save("lang", st.lang); paintLang();
     await loadLangSet(); route();
+  };
+  let installEvt = null;
+  const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios && !installed) $("#install").hidden = false;
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; $("#install").hidden = false; });
+  addEventListener("appinstalled", () => { installEvt = null; $("#install").hidden = true; });
+  $("#install").onclick = async () => {
+    if (!installEvt) return toast("Tap the Share button, then Add to Home Screen");
+    installEvt.prompt();
+    await installEvt.userChoice;
+    installEvt = null; $("#install").hidden = true;
   };
   function tick() { $("#clock").textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).toLowerCase(); if (!$("#player").hidden) paintNow(); }
   async function route() {

@@ -18,6 +18,8 @@
 
   const video = $("#video");
   const NATIVE = !!video.canPlayType("application/vnd.apple.mpegurl");
+  const APPLE = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    || (/Safari\//.test(navigator.userAgent) && !/Chrome|Chromium|Edg|OPR|Android|Firefox/.test(navigator.userAgent));
   const st = {
     cfg: { public: false, relay: true, playOnTv: true },
     lang: load("lang", "eng"), langSet: null, favs: load("favs", []), last: load("last", null),
@@ -53,12 +55,13 @@
     if (!st.lang) return;
     st.langSet = new Set((await getList("languages/" + st.lang + ".m3u")).map((c) => c.url));
   }
-  /* Which channels this device can play: everything when the server relays streams; on the public site phones use
-     their built-in player (no cross-site rule), other browsers skip streams marked hated-web="0". */
+  /* Which channels this device can play: everything when the server relays streams; on the public site a built-in
+     player can load streams marked hated-web="0", except Pluto, which only Apple's player handles. Chrome's built-in player fails on it. */
   function webOk(c) {
     if (st.cfg.relay) return true;
     if (c.ua || c.ref) return false;
-    return NATIVE || c.web !== "0";
+    if (c.web !== "0") return true;
+    return NATIVE && (APPLE || !(c.pluto || /pluto\.tv/.test(c.url)));
   }
   const shown = (list) => list.filter((c) => (!st.lang || !st.langSet || st.langSet.has(c.url)) && webOk(c));
   async function loadGuide() { try { st.guide = await (await fetch(api("/guide.json"))).json(); } catch { /* keep old */ } }

@@ -7,7 +7,7 @@ Run by .github/workflows/build.yml every 2 hours. Uses the same code as the home
   vod/categories, vod/category/<id>, vod/index.json   Pluto On Demand catalog
   config, status, health.json, app/   settings, counts, channel test results, web app
 The channel test runs when RUN_HEALTH=1; otherwise the last published results (HATEDTV_PUBLISHED/health.json) are reused."""
-import json, os, shutil, sys, urllib.request
+import json, os, re, shutil, sys, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -23,7 +23,8 @@ J = lambda o: json.dumps(o, separators=(",", ":"))
 
 
 def write(rel, data):
-    p = OUT / rel
+    p = (OUT / rel).resolve()
+    if OUT.resolve() not in p.parents: raise ValueError(f"refusing to write outside the site folder: {rel}")
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes(data if isinstance(data, bytes) else data.encode("utf-8"))
 
@@ -63,7 +64,7 @@ def main():
     write("config", J({"public": True, "relay": False, "playOnTv": False, "static": True}))
     write("vod/categories", J(guide.pluto["cats"]))
     for cid, items in guide.pluto["catItems"].items():
-        write(f"vod/category/{cid}", J(items))
+        if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", cid): write(f"vod/category/{cid}", J(items))
     write("vod/index.json", J([[i["id"], i["name"], i["type"], i["poster"] or i["image"]] for i in guide.pluto["items"].values()]))
     write("status", J({**hub.status(), "titles": len(guide.pluto["items"]), "shelves": len(guide.pluto["cats"])}))
     write("health.json", J(hub.health))

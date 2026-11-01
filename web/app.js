@@ -291,7 +291,7 @@
     if (!st.vodCats.length) { main.innerHTML = `<h1>On Demand is loading</h1><p class="muted">The catalog isn't ready yet. Try again in a minute.</p>`; return; }
     const id = shelf || st.vodCats[0].id;
     main.innerHTML = `<div><div class="eyebrow">On Demand // opens in Pluto TV</div><h1>${esc((st.vodCats.find((c) => c.id === id) || {}).name || "")}</h1></div>
-      <div class="shelves">${st.vodCats.map((c) => `<button type="button" data-shelf="${c.id}" class="${c.id === id ? "on" : ""}">${esc(c.name)}</button>`).join("")}</div>
+      <div class="shelves">${st.vodCats.map((c) => `<button type="button" data-shelf="${esc(c.id)}" class="${c.id === id ? "on" : ""}">${esc(c.name)}</button>`).join("")}</div>
       <div class="posters" id="posters"><div class="muted">Loading...</div></div>`;
     main.querySelector(".shelves").onclick = (e) => { const b = e.target.closest("[data-shelf]"); if (b) location.hash = "vod/" + b.dataset.shelf; };
     main.querySelector(".shelves .on")?.scrollIntoView({ inline: "center", block: "nearest" });
@@ -317,7 +317,7 @@
       const s = sheet(`<h2>${esc(d.name)}</h2><div class="muted">${esc(meta(d))}</div><p>${esc(d.summary)}</p><div class="eps"><div class="muted">Loading episodes...</div></div><button class="btn" data-close type="button">Close</button>`);
       let eps = [];
       try { eps = await (await fetch(api("/vod/series/" + d.id))).json(); } catch { /* server busy */ }
-      s.querySelector(".eps").innerHTML = eps.map((e, i) => `<div class="ep"><span>S${e.season} E${e.number}  ${esc(e.name)}</span><span>${tvBtn(`data-tv="${i}"`)} <a class="btn" target="_blank" rel="noopener" href="${esc(plutoUrl(e, d.id))}">Watch on Pluto</a></span></div>`).join("") || `<div class="muted">No episodes available right now.</div>`;
+      s.querySelector(".eps").innerHTML = eps.map((e, i) => `<div class="ep"><span>S${esc(e.season)} E${esc(e.number)}  ${esc(e.name)}</span><span>${tvBtn(`data-tv="${i}"`)} <a class="btn" target="_blank" rel="noopener" href="${esc(plutoUrl(e, d.id))}">Watch on Pluto</a></span></div>`).join("") || `<div class="muted">No episodes available right now.</div>`;
       s.querySelector(".eps").onclick = (e) => { const b = e.target.closest("[data-tv]"); if (b) sendToTv(eps[+b.dataset.tv]); };
       return;
     }

@@ -1,4 +1,4 @@
-"""Hated TV server (run with pythonw, desktop shortcut "Hated TV Guide"). Port 8099.
+"""Hated TV server. Port 8099 by default (HATEDTV_PORT).
   /guide.json              Pluto live schedules: { channel_id: [[start_epoch, duration_s, title], ...] }
   /vod/categories          Pluto on-demand shelves: [{id, name, count}]
   /vod/category/<id>       items of one shelf: [{id, name, type, poster, image, summary, genre, rating, minutes, hls}]
@@ -15,12 +15,12 @@ import webserve
 
 
 import os
-PUBLIC = os.environ.get("HATEDTV_PUBLIC") == "1"          # cloud mode: no relay, no Play on TV, no home name server
+PUBLIC = os.environ.get("HATEDTV_PUBLIC") == "1"          # public mode: no stream relay, no Play on TV, no local extras
 PREFIX = os.environ.get("HATEDTV_PREFIX", "").rstrip("/")  # e.g. /hatedtv when served at hatedgaming.net/hatedtv
 HOST = os.environ.get("HATEDTV_HOST", "")
 PORT = int(os.environ.get("HATEDTV_PORT", "8099"))
 HOURS, REFRESH = 8, 1200
-TV = os.environ.get("HATEDTV_TV", "")  # Roku TV address for Play on TV, home mode only (set by the control panel)
+TV = os.environ.get("HATEDTV_TV", "")  # optional Roku device address for Play on TV
 PLUTO_APP = "74519"
 UTC = datetime.timezone.utc
 UA = {"User-Agent": "Mozilla/5.0"}
@@ -175,7 +175,7 @@ class H(BaseHTTPRequestHandler):
                 q = (qs.get("q") or [""])[0].strip().lower()
                 body = J([i for i in pluto["items"].values() if q and q in i["name"].lower()][:120])
             elif p == "/vod/open":
-                if PUBLIC: code, body = 404, J({"error": "Play on TV is only available at home"})
+                if PUBLIC: code, body = 404, J({"error": "Play on TV is not available here"})
                 else: body = J(open_in_pluto((qs.get("id") or [""])[0], (qs.get("type") or ["movie"])[0]))
             else: body = J({"guide_updated": state["updated"], "guide_error": state["error"], "vod_updated": pluto["updated"], "vod_error": pluto["error"], "shelves": len(pluto["cats"]), "titles": len(pluto["items"]), **hub.status()})
         except Exception as ex:
@@ -195,13 +195,10 @@ if __name__ == "__main__":
     threading.Thread(target=refresher, daemon=True).start()
     hub.start()
     if not PUBLIC:
-        import dns
-        dns.start()
         try:
-            web80 = ThreadingHTTPServer(("", 80), H)
-            threading.Thread(target=web80.serve_forever, daemon=True).start()
-            print("web app also on port 80", flush=True)
-        except OSError as ex:
-            print("port 80 unavailable:", ex, flush=True)
+            import local_extras   # optional, not part of this repository
+            local_extras.start(H)
+        except ImportError:
+            pass
     print("Hated TV server on port", PORT, "(public mode)" if PUBLIC else "", flush=True)
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()

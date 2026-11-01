@@ -1,6 +1,6 @@
 """Builds the whole public Hated TV site as static files in site/ (published at <pages>/hatedtv/).
 
-Run by .github/workflows/build.yml every 2 hours. Uses the same code as the home server (hub.py, guide.py):
+Run by .github/workflows/build.yml every 2 hours. Uses the same code as the server (hub.py, guide.py):
   iptv/<list>.m3u      browser lists (channels a desktop browser cannot load are tagged hated-web="0")
   iptv-tv/<list>.m3u   TV app lists
   guide.json           Pluto plus matched guide data, next 8 hours

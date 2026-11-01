@@ -1,6 +1,6 @@
 """Web app side of the Hated TV server, used by guide.py.
 
-static(handler, path)  serves web/ under /app/, plus the intro video, fonts and logo from the Roku app folder (with byte ranges)
+static(handler, path)  serves web/ under /app/, plus fonts, logo and intro video from app/ (with byte ranges)
 relay(handler, qs)     /p?u=<url>[&ua=][&ref=]: fetches a public stream for browsers that cannot load it directly,
                        rewriting playlist links so every follow-up request comes back through the relay."""
 import http.client, ipaddress, mimetypes, re, socket, ssl, urllib.parse, urllib.request
@@ -57,7 +57,7 @@ def blocked_ip(ip):
 
 
 def public_host(url):
-    """Only relay to public internet addresses, never to the home network, the tailnet or this PC.
+    """Only relay to public internet addresses, never to private, loopback, link-local or shared (carrier-grade NAT) ranges.
     Every address the name resolves to must be public."""
     u = urllib.parse.urlsplit(url)
     if u.scheme not in ("http", "https") or not u.hostname: return False
@@ -70,7 +70,7 @@ def public_host(url):
 
 def check_peer(sock):
     """Called right after the TCP connection opens, before TLS or any request bytes: the address actually
-    reached must be public, so a name that changes between lookups cannot point the relay at the home network."""
+    reached must be public, so a name that changes between lookups cannot point the relay at a private network."""
     try:
         peer = ipaddress.ip_address(sock.getpeername()[0])
     except Exception:

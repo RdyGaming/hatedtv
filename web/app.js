@@ -2,7 +2,7 @@
   "use strict";
   const $ = (s) => document.querySelector(s);
   const main = $("#main");
-  const BASE = location.pathname.replace(/\/app\/.*$/, "").replace(/\/$/, "");   // "" at home, "/hatedtv" on hatedgaming.net
+  const BASE = location.pathname.replace(/\/app\/.*$/, "").replace(/\/$/, "");   // "" when served at the root, "/hatedtv" when served under that path
   const api = (p) => BASE + p;
   const IPTV_API = "https://iptv-org.github.io/api/categories.json";
   const LANGS = [["", "All languages"], ["eng", "English"], ["spa", "Spanish"]];
@@ -53,7 +53,7 @@
     if (!st.lang) return;
     st.langSet = new Set((await getList("languages/" + st.lang + ".m3u")).map((c) => c.url));
   }
-  /* Which channels this device can play: everything with the home relay; on the public site phones use
+  /* Which channels this device can play: everything when the server relays streams; on the public site phones use
      their built-in player (no cross-site rule), other browsers skip streams marked hated-web="0". */
   function webOk(c) {
     if (st.cfg.relay) return true;
@@ -77,7 +77,7 @@
   let hls = null;
   function relayUrl(c) { const q = new URLSearchParams({ u: c.url }); if (c.ua) q.set("ua", c.ua); if (c.ref) q.set("ref", c.ref); return api("/p?" + q); }
   function showMsg(t) { const m = $("#vmsg"); m.textContent = t; m.hidden = !t; }
-  /* Order of attempts: built-in player, then hls.js when the browser may load the stream, then the home relay. */
+  /* Order of attempts: built-in player, then hls.js when the browser may load the stream, then the server's relay when it has one. */
   function attach(c, viaRelay, skipNative) {
     showMsg("");
     if (hls) { hls.destroy(); hls = null; }

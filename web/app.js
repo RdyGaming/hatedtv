@@ -80,12 +80,37 @@
   let hls = null;
   function relayUrl(c) { const q = new URLSearchParams({ u: c.url }); if (c.ua) q.set("ua", c.ua); if (c.ref) q.set("ref", c.ref); return api("/p?" + q); }
   function showMsg(t) { const m = $("#vmsg"); m.textContent = t; m.hidden = !t; }
-  /* Order of attempts: built-in player, then hls.js when the browser may load the stream, then the server's relay when it has one. */
+  /* Pluto live playlists hold 25 s of video. Reloads within minGap ms reuse the last copy instead of asking the relay. */
+  function slowPlaylists(minGap) {
+    const seen = new Map();
+    return class extends Hls.DefaultConfig.loader {
+      load(context, config, callbacks) {
+        const hit = seen.get(context.url);
+        if (context.type !== "manifest" && hit && performance.now() - hit.t < minGap) {
+          const s = this.stats, now = performance.now();
+          s.loading.start = s.loading.first = s.loading.end = now;
+          s.loaded = s.total = hit.data.length;
+          this.context = context;
+          setTimeout(() => { if (!this.gone) callbacks.onSuccess({ url: hit.url, data: hit.data }, s, context, null); }, 0);
+          return;
+        }
+        super.load(context, config, { ...callbacks, onSuccess: (res, stats, ctx, net) => {
+          if (typeof res.data === "string") seen.set(context.url, { t: performance.now(), url: res.url, data: res.data });
+          callbacks.onSuccess(res, stats, ctx, net);
+        } });
+      }
+      abort() { this.gone = true; super.abort(); }
+      destroy() { this.gone = true; super.destroy(); }
+    };
+  }
+  /* Order of attempts: built-in player, then hls.js when the browser may load the stream, then the server's relay when it has one.
+     iPhone and iPad play Pluto directly and only fall back to the Pluto relay if that fails. */
   function attach(c, viaRelay, skipNative) {
     showMsg("");
     if (hls) { hls.destroy(); hls = null; }
     const relay = st.cfg.relay && (viaRelay || !!c.ua || !!c.ref);
-    const viaPluto = !st.cfg.relay && !!st.cfg.plutoRelay && !!c.pluto;
+    const plutoRelay = !st.cfg.relay && !!st.cfg.plutoRelay && !!c.pluto;
+    const viaPluto = plutoRelay && !(NATIVE && APPLE && !skipNative);
     const src = relay ? relayUrl(c) : viaPluto ? `${st.cfg.plutoRelay}/pl/${c.pluto}.m3u8` : c.url;
     const canHls = !!(window.Hls && Hls.isSupported());
     const fail = () => {
@@ -93,11 +118,11 @@
       else showMsg("This channel isn't playing right now. Try Next.");
     };
     if (/\.mp4(\?|$)/i.test(c.url) || (NATIVE && !relay && !viaPluto && !skipNative) || !canHls) {
-      video.onerror = () => { if (NATIVE && !skipNative && canHls && (st.cfg.relay || c.web !== "0")) attach(c, viaRelay, true); else fail(); };
+      video.onerror = () => { if (NATIVE && !skipNative && ((canHls && (st.cfg.relay || c.web !== "0")) || plutoRelay)) attach(c, viaRelay, true); else fail(); };
       video.src = src; video.play().catch(() => {}); return;
     }
     video.onerror = null;
-    hls = new Hls();
+    hls = viaPluto ? new Hls({ pLoader: slowPlaylists(14000), liveSyncDuration: 22 }) : new Hls();
     hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { hls.destroy(); hls = null; fail(); } });
     hls.loadSource(src); hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));

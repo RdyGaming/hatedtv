@@ -72,7 +72,7 @@ def main():
     shutil.copytree(ROOT / "web", OUT / "app")
     shutil.copytree(ROOT / "app" / "fonts", OUT / "app" / "fonts")
     shutil.copy2(ROOT / "app" / "images" / "logo.png", OUT / "app" / "logo.png")
-    write("index.html", '<!doctype html><meta charset="utf-8"><title>Hated TV</title><meta http-equiv="refresh" content="0; url=app/index.html">')
+    write("index.html", '<!doctype html><meta charset="utf-8"><title>Hated TV</title><meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex"><meta http-equiv="refresh" content="0; url=app/index.html">')
     write(".nojekyll", "")
     files = sum(1 for p in OUT.rglob("*") if p.is_file())
     print(f"site built: {files} files, {len(paths)} lists, {len(guide.pluto['items'])} titles, {hub.status()['health_dead']} channels hidden")

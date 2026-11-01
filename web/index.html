@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hated TV</title>
+<meta name="theme-color" content="#07070A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hated TV">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="app.css">
+<script src="hls.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <a href="#home" class="brand" aria-label="Hated TV home"><img src="logo.png" alt="Hated TV" width="148" height="37"></a>
+  <nav class="tabs" aria-label="Sections">
+    <a href="#home" data-tab="home">Home</a>
+    <a href="#live" data-tab="live">Live TV</a>
+    <a href="#vod" data-tab="vod">On Demand</a>
+    <a href="#favs" data-tab="favs">Favorites</a>
+    <a href="#search" data-tab="search">Search</a>
+  </nav>
+  <div class="tools"><button id="lang" class="chip" type="button"></button><span id="clock" class="clock"></span></div>
+</header>
+
+<section id="player" class="player" hidden>
+  <div class="screen"><video id="video" playsinline controls></video><div id="vmsg" class="vmsg" hidden></div></div>
+  <div class="np">
+    <div class="np-ch" id="npCh"></div>
+    <div class="np-now" id="npNow"></div>
+    <div class="np-next" id="npNext"></div>
+    <div class="np-btns">
+      <button id="prev" type="button">Prev</button>
+      <button id="next" type="button">Next</button>
+      <button id="fav" type="button">Favorite</button>
+      <button id="close" type="button">Close</button>
+    </div>
+  </div>
+</section>
+
+<main id="main"></main>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>

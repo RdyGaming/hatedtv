@@ -77,7 +77,7 @@
   }
 
   /* ---------- player ---------- */
-  let hls = null;
+  let hls = null, parkTimer = 0, parked = false;
   function relayUrl(c) { const q = new URLSearchParams({ u: c.url }); if (c.ua) q.set("ua", c.ua); if (c.ref) q.set("ref", c.ref); return api("/p?" + q); }
   function showMsg(t) { const m = $("#vmsg"); m.textContent = t; m.hidden = !t; }
   /* Pluto live playlists hold 25 s of video. Reloads within minGap ms reuse the last copy instead of asking the relay. */
@@ -107,6 +107,7 @@
      iPhone and iPad play Pluto directly and only fall back to the Pluto relay if that fails. */
   function attach(c, viaRelay, skipNative) {
     showMsg("");
+    clearTimeout(parkTimer); parked = false;
     if (hls) { hls.destroy(); hls = null; }
     const relay = st.cfg.relay && (viaRelay || !!c.ua || !!c.ref);
     const plutoRelay = !st.cfg.relay && !!st.cfg.plutoRelay && !!c.pluto;
@@ -123,6 +124,7 @@
     }
     video.onerror = null;
     hls = viaPluto ? new Hls({ pLoader: slowPlaylists(14000), liveSyncDuration: 22 }) : new Hls();
+    hls.pluto = viaPluto;
     hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) { hls.destroy(); hls = null; fail(); } });
     hls.loadSource(src); hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
@@ -152,6 +154,15 @@
   $("#prev").onclick = () => play(st.list, st.idx - 1);
   $("#next").onclick = () => play(st.list, st.idx + 1);
   $("#close").onclick = closePlayer;
+  /* A Pluto channel paused for 20 s stops fetching playlists; play starts it again at live. */
+  video.addEventListener("pause", () => {
+    clearTimeout(parkTimer);
+    parkTimer = setTimeout(() => { if (video.paused && hls && hls.pluto) { hls.stopLoad(); parked = true; } }, 20000);
+  });
+  video.addEventListener("play", () => {
+    clearTimeout(parkTimer);
+    if (parked && st.list[st.idx]) attach(st.list[st.idx], false);
+  });
   $("#fav").onclick = () => { toggleFav(st.list[st.idx]); paintNow(); };
   document.addEventListener("keydown", (e) => {
     if ($("#player").hidden || /INPUT|TEXTAREA/.test(document.activeElement?.tagName || "")) return;

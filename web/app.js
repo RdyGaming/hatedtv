@@ -60,7 +60,7 @@
   function webOk(c) {
     if (st.cfg.relay) return true;
     if (c.ua || c.ref) return false;
-    if (c.web !== "0") return true;
+    if (c.web !== "0" || (st.cfg.plutoRelay && c.pluto)) return true;
     return NATIVE && (APPLE || !(c.pluto || /pluto\.tv/.test(c.url)));
   }
   const shown = (list) => list.filter((c) => (!st.lang || !st.langSet || st.langSet.has(c.url)) && webOk(c));
@@ -85,13 +85,14 @@
     showMsg("");
     if (hls) { hls.destroy(); hls = null; }
     const relay = st.cfg.relay && (viaRelay || !!c.ua || !!c.ref);
-    const src = relay ? relayUrl(c) : c.url;
+    const viaPluto = !st.cfg.relay && !!st.cfg.plutoRelay && !!c.pluto;
+    const src = relay ? relayUrl(c) : viaPluto ? `${st.cfg.plutoRelay}/pl/${c.pluto}.m3u8` : c.url;
     const canHls = !!(window.Hls && Hls.isSupported());
     const fail = () => {
       if (!relay && st.cfg.relay) attach(c, true);
       else showMsg("This channel isn't playing right now. Try Next.");
     };
-    if (/\.mp4(\?|$)/i.test(c.url) || (NATIVE && !relay && !skipNative) || !canHls) {
+    if (/\.mp4(\?|$)/i.test(c.url) || (NATIVE && !relay && !viaPluto && !skipNative) || !canHls) {
       video.onerror = () => { if (NATIVE && !skipNative && canHls && (st.cfg.relay || c.web !== "0")) attach(c, viaRelay, true); else fail(); };
       video.src = src; video.play().catch(() => {}); return;
     }

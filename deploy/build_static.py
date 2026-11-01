@@ -61,7 +61,8 @@ def main():
         write("iptv-tv/" + p, hub.serve(p, strict=False)[0])
 
     write("guide.json", J({**pluto_guide, **hub.epg["progs"]}))
-    write("config", J({"public": True, "relay": False, "playOnTv": False, "static": True}))
+    write("config", J({"public": True, "relay": False, "playOnTv": False, "static": True,
+                       "plutoRelay": os.environ.get("HATEDTV_PLUTO_RELAY", "").rstrip("/")}))
     write("vod/categories", J(guide.pluto["cats"]))
     for cid, items in guide.pluto["catItems"].items():
         if re.fullmatch(r"[A-Za-z0-9_-]{1,64}", cid): write(f"vod/category/{cid}", J(items))

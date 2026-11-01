@@ -31,6 +31,7 @@ jobs:
       - name: Build the site
         env:
           HATEDTV_PUBLISHED: https://rdygaming.github.io/hatedtv
+          HATEDTV_PLUTO_RELAY: https://hatedtv-pluto.hatedgaming.workers.dev
         run: |
           HOUR=$(date -u +%H)
           if [ "${{ inputs.channel_test }}" = "true" ] || [ $((10#$HOUR % 12)) -eq 0 ]; then export RUN_HEALTH=1; fi

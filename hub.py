@@ -34,7 +34,14 @@ lock = threading.Lock()
 
 
 def get_bytes(url, timeout=60):
-    return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=timeout).read()
+    for wait in (3, 10, 0):
+        try:
+            return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=timeout).read()
+        except urllib.error.HTTPError as e:
+            if e.code < 500 or not wait: raise
+        except urllib.error.URLError:
+            if not wait: raise
+        time.sleep(wait)
 
 
 def get_text(url, ttl=TTL):
